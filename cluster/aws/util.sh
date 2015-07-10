@@ -22,6 +22,8 @@ KUBE_ROOT=$(dirname "${BASH_SOURCE}")/../..
 source "${KUBE_ROOT}/cluster/aws/${KUBE_CONFIG_FILE-"config-default.sh"}"
 source "${KUBE_ROOT}/cluster/common.sh"
 
+SSH_OPTS="-oStrictHostKeyChecking=no -oIdentitiesOnly=yes"
+
 ALLOCATE_NODE_CIDRS=true
 
 NODE_INSTANCE_PREFIX="${INSTANCE_PREFIX}-minion"
@@ -885,7 +887,7 @@ function kube-up {
     echo -n Attempt "$(($attempt+1))" to check for SSH to master
     local output
     local ok=1
-    output=$(ssh -oStrictHostKeyChecking=no -i "${AWS_SSH_KEY}" ${SSH_USER}@${KUBE_MASTER_IP} uptime 2> $LOG) || ok=0
+    output=$(ssh ${SSH_OPTS} -i "${AWS_SSH_KEY}" ${SSH_USER}@${KUBE_MASTER_IP} uptime 2> $LOG) || ok=0
     if [[ ${ok} == 0 ]]; then
       if (( attempt > 30 )); then
         echo
@@ -911,7 +913,7 @@ function kube-up {
     echo -n Attempt "$(($attempt+1))" to check for salt-master
     local output
     local ok=1
-    output=$(ssh -oStrictHostKeyChecking=no -i "${AWS_SSH_KEY}" ${SSH_USER}@${KUBE_MASTER_IP} pgrep salt-master 2> $LOG) || ok=0
+    output=$(ssh ${SSH_OPTS} -i "${AWS_SSH_KEY}" ${SSH_USER}@${KUBE_MASTER_IP} pgrep salt-master 2> $LOG) || ok=0
     if [[ ${ok} == 0 ]]; then
       if (( attempt > 30 )); then
         echo
@@ -1000,7 +1002,7 @@ function kube-up {
     sleep 10
   done
   echo "Re-running salt highstate"
-  ssh -oStrictHostKeyChecking=no -i "${AWS_SSH_KEY}" ${SSH_USER}@${KUBE_MASTER_IP} sudo salt '*' state.highstate > $LOG
+  ssh ${SSH_OPTS} -i "${AWS_SSH_KEY}" ${SSH_USER}@${KUBE_MASTER_IP} sudo salt '*' state.highstate > $LOG
 
   echo "Waiting for cluster initialization."
   echo
@@ -1029,9 +1031,9 @@ function kube-up {
   # config file.  Distribute the same way the htpasswd is done.
   (
     umask 077
-    ssh -oStrictHostKeyChecking=no -i "${AWS_SSH_KEY}" "${SSH_USER}@${KUBE_MASTER_IP}" sudo cat /srv/kubernetes/kubecfg.crt >"${KUBE_CERT}" 2>"$LOG"
-    ssh -oStrictHostKeyChecking=no -i "${AWS_SSH_KEY}" "${SSH_USER}@${KUBE_MASTER_IP}" sudo cat /srv/kubernetes/kubecfg.key >"${KUBE_KEY}" 2>"$LOG"
-    ssh -oStrictHostKeyChecking=no -i "${AWS_SSH_KEY}" "${SSH_USER}@${KUBE_MASTER_IP}" sudo cat /srv/kubernetes/ca.crt >"${CA_CERT}" 2>"$LOG"
+    ssh ${SSH_OPTS} -i "${AWS_SSH_KEY}" "${SSH_USER}@${KUBE_MASTER_IP}" sudo cat /srv/kubernetes/kubecfg.crt >"${KUBE_CERT}" 2>"$LOG"
+    ssh ${SSH_OPTS} -i "${AWS_SSH_KEY}" "${SSH_USER}@${KUBE_MASTER_IP}" sudo cat /srv/kubernetes/kubecfg.key >"${KUBE_KEY}" 2>"$LOG"
+    ssh ${SSH_OPTS} -i "${AWS_SSH_KEY}" "${SSH_USER}@${KUBE_MASTER_IP}" sudo cat /srv/kubernetes/ca.crt >"${CA_CERT}" 2>"$LOG"
 
     create-kubeconfig
   )
@@ -1227,7 +1229,7 @@ function kube-push {
     echo "echo Executing configuration"
     echo "sudo salt '*' mine.update"
     echo "sudo salt --force-color '*' state.highstate"
-  ) | ssh -oStrictHostKeyChecking=no -i "${AWS_SSH_KEY}" ${SSH_USER}@${KUBE_MASTER_IP} sudo bash
+  ) | ssh ${SSH_OPTS} -i "${AWS_SSH_KEY}" ${SSH_USER}@${KUBE_MASTER_IP} sudo bash
 
   get-password
 
@@ -1301,7 +1303,7 @@ function ssh-to-node {
   fi
 
   for try in $(seq 1 5); do
-    if ssh -oLogLevel=quiet -oStrictHostKeyChecking=no -i "${AWS_SSH_KEY}" ${SSH_USER}@${ip} "${cmd}"; then
+    if ssh ${SSH_OPTS} -oLogLevel=quiet -i "${AWS_SSH_KEY}" ${SSH_USER}@${ip} "${cmd}"; then
       break
     fi
   done

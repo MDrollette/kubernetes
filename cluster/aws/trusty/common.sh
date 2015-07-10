@@ -40,7 +40,7 @@ function check-minion() {
 
   local output=$(ssh -oStrictHostKeyChecking=no -i "${AWS_SSH_KEY}" ${SSH_USER}@$minion_ip sudo docker ps -a 2>/dev/null)
   if [[ -z "${output}" ]]; then
-    ssh -oStrictHostKeyChecking=no -i "${AWS_SSH_KEY}" ${SSH_USER}@$minion_ip sudo service docker start > $LOG 2>&1
+    ssh ${SSH_OPTS} -i "${AWS_SSH_KEY}" ${SSH_USER}@$minion_ip sudo service docker start > $LOG 2>&1
     echo "not working yet"
   else
     echo "working"
